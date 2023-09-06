@@ -21,12 +21,39 @@ function followTrail!(trail,p,direction)
         else 
             error("direction must be 1 or -1")
         end
+        if mag(s)<5/W && length(trail.points)>2
+            if(direction==1)
+                fp=findFixedPoint(trail.points[end-2],trail.points[end-1],trail.points[end])
+                if !isnan(fp)
+                    push!(trail.points,fp)
+                    continueCond=false
+                    println("found fixed point at ",fp," direction ",direction," after ",i," iterations")
+                end
+            else
+                fp=findFixedPoint(trail.points[3],trail.points[2],trail.points[1])
+                if !isnan(fp)
+                    pushfirst!(trail.points,fp)
+                    continueCond=false
+                    println("found fixed point at ",fp," direction ",direction," after ",i," iterations")
+                    println("trail.points=",trail.points[3],trail.points[2],trail.points[1])
+                end
+            end
+        end
         i+=1
-        continueCond=i<maxNPts && mag(s)>1/W
+        continueCond=continueCond && i<maxNPts && mag(s)>1/W
     end
 end
 
-function followTrailBothWays!(trail,origin=Point(rand(-w/2:w/2),rand(-h/2:h/2)))
+function findFixedPoint(A::Point,B::Point,C::Point)
+    ratio=(C-B)/(B-A)
+    # println("ratio=",ratio)
+    # compute infinite geometric series
+    return abs(ratio)<1 ? A + (B-A)/(1-ratio) : NaN
+end
+
+
+
+function followTrailBothWays!(trail,origin)
     p=origin #immutable
     push!(trail.points, p)
     followTrail!(trail,p,1)
@@ -40,9 +67,8 @@ function disp(trail)
     for i=1:length(points)-1
         line(points[i],points[i+1], :stroke)
     end
-    # #draw point at trail.origin in red
-    # gsave()
-    # sethue("red")
-    # circle(trail.origin,2,:fill)
-    # grestore()
+    gsave()
+    sethue("red")
+    circle(trail.origin,2,:fill)
+    grestore()
 end
