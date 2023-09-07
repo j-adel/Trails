@@ -7,68 +7,59 @@ mutable struct Trail
     Trail() = new(Point[])
 end
 
-function followTrail!(trail,p,direction)
+function followTrail!(p,direction,fieldFunction::Function,fields)
+    points=Point[]
     maxNPts=2000
     i=0
-    continueCond=true
-    while p.x>-W/2 && p.x<W/2 && p.y>-H/2 && p.y<H/2 && continueCond
-        s=vectorfield(p)
+    contCond=true
+    while p.x>-W/2 && p.x<W/2 && p.y>-H/2 && p.y<H/2 && contCond
+        s=fieldFunction(p,fields)
         p +=s*direction   # Update p1
-        if direction==1
-            push!(trail.points, p)  # Add the current p1 to t99rail.points
-        elseif direction==-1
-            pushfirst!(trail.points, p)  # Add the current p1 to start of trail.points
-        else 
-            error("direction must be 1 or -1")
-        end
-        if mag(s)<5/W && length(trail.points)>2
-            if(direction==1)
-                fp=findFixedPoint(trail.points[end-2],trail.points[end-1],trail.points[end])
-                if !isnan(fp)
-                    push!(trail.points,fp)
-                    continueCond=false
-                    println("found fixed point at ",fp," direction ",direction," after ",i," iterations")
-                end
-            else
-                fp=findFixedPoint(trail.points[3],trail.points[2],trail.points[1])
-                if !isnan(fp)
-                    pushfirst!(trail.points,fp)
-                    continueCond=false
-                    println("found fixed point at ",fp," direction ",direction," after ",i," iterations")
-                    println("trail.points=",trail.points[3],trail.points[2],trail.points[1])
-                end
+        push!(points, p)  # Add the current p1 to trail.points
+        if mag(s)<10/W && length(points)>2
+            fp=findFixedPoint(points[end-2],points[end-1],points[end])
+            if !isnan(fp)
+                push!(points,fp)
+                contCond=false
+                # println("found fixed point at ",fp," direction ",direction," after ",i," iterations")
             end
         end
         i+=1
-        continueCond=continueCond && i<maxNPts && mag(s)>1/W
+        contCond=contCond && i<maxNPts && (mag(s)>1/W || length(points)<5)
     end
+    return points
 end
 
 function findFixedPoint(A::Point,B::Point,C::Point)
     ratio=(C-B)/(B-A)
-    # println("ratio=",ratio)
     # compute infinite geometric series
-    return abs(ratio)<1 ? A + (B-A)/(1-ratio) : NaN
+    return abs(ratio)<.999 ? A + (B-A)/(1-ratio) : NaN
 end
 
 
 
-function followTrailBothWays!(trail,origin)
+function followTrailBothWays!(trail,origin,fieldFunction::Function,fields)
     p=origin #immutable
+    points1=followTrail!(p,1,fieldFunction,fields)
+    points2=followTrail!(p,-1,fieldFunction,fields)
+    append!(trail.points,reverse(points2))
     push!(trail.points, p)
-    followTrail!(trail,p,1)
-    followTrail!(trail,p,-1)
+    append!(trail.points,points1)
 end
 
 
 
 function disp(trail)
     points=trail.points
-    for i=1:length(points)-1
-        line(points[i],points[i+1], :stroke)
+    move(points[1])
+    setcolor(1,1,1)
+    setline(1.5)
+    for i=1+1:length(points)
+        line(points[i])
     end
-    gsave()
-    sethue("red")
-    circle(trail.origin,2,:fill)
-    grestore()
+    strokepath()
+    # gsave()
+    # sethue("red")
+    # circle(trail.origin,2,:fill)
+    # grestore()
 end
