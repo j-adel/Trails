@@ -68,10 +68,36 @@ function Base.isnan(p::Point)
     return isnan(p.x) || isnan(p.y)
 end
 
+function Base.min(p1::Point, p2::Point)
+    return Point(min(p1.x, p2.x), min(p1.y, p2.y))
+end
+
+function Base.max(p1::Point, p2::Point)
+    return Point(max(p1.x, p2.x), max(p1.y, p2.y))
+end
+
 function randF(min,max)
     return min+rand()*(max-min)
 end
 
 function randF(max)
     return randF(0,max)
+end
+
+function linspace(start, stop, len)
+    return range(start, stop=stop, length=len)
+end
+
+function meshgrid(x,y)
+    return [Point(x,yi) for yi in y],[Point(xi,y) for xi in x]
+end
+
+function meshgrid(x_points::Int, y_points::Int, x_range::Tuple{Float64, Float64}, y_range::Tuple{Float64, Float64})
+    x_lin = range(x_range[1], stop=x_range[2], length=x_points)
+    y_lin = range(y_range[1], stop=y_range[2], length=y_points)
+    
+    x_grid = repeat(reshape(x_lin, 1, :), y_points, 1)
+    y_grid = repeat(y_lin, 1, x_points)
+    
+    return x_grid, y_grid
 end

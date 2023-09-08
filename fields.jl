@@ -31,6 +31,12 @@ function initializeFields!(fields::Vector{Field}, nfields=2)
         field=initializeField(attLineField)
         push!(fields, field)
     end
+
+    # push!(fields,attLineField(Point(-W/2,-H/2),Point( W/2,-H/2),0.95,0,0,Point[]))
+    # push!(fields,attLineField(Point( W/2,-H/2),Point( W/2, H/2),0.95,0,0,Point[]))
+    # push!(fields,attLineField(Point( W/2, H/2),Point(-W/2, H/2),0.95,0,0,Point[]))
+    # push!(fields,attLineField(Point(-W/2, H/2),Point(-W/2,-H/2),0.95,0,0,Point[]))
+
     # field1=attLineField(Point(0, -W/4), Point(0, W/4), 1.5, 50, 10, Point[])
     # push!(fields, field1)
     # field2=attLineField(Point(-W/4, 0), Point(W/4, 0), 0.3, 50, 10,Point[])
@@ -45,10 +51,10 @@ function initializeField(::Type{T}) where T <: attLineField
     angle = rand() * 2π
     length = randF(0.1, 0.5) * W
     
-    A = center + Point(cos(angle), sin(angle)) * length
-    B = center + Point(cos(angle + π), sin(angle + π)) * length
-    rotation = rand(-2:2)
-    areaFactor = randn() * 50
+    A = max(min(center + Point(cos(angle), sin(angle)) * length, Point(W/2, H/2)*.9), Point(-W/2, -H/2)*.9)
+    B = max(min(center + Point(cos(angle + π), sin(angle + π)) * length, Point(W/2, H/2)*.9), Point(-W/2, -H/2)*.9)
+    rotation = randF(-1, 1)*.95 +rand([-1,0,1])
+    areaFactor = abs(randn() * 50)+distance(A,B)/4
     nSeeds = 20
     seedPoints = Point[]
     
@@ -67,37 +73,34 @@ end
 
 function computeVector(p,fields)
     vectors = Point[]
-    weights = []    
+    distances = []    
     for field in fields
-        fieldF=fieldFunction(field)
-        s, w = fieldF(field, p)
+        s, w = fieldFunction(field)(field, p)
         push!(vectors, s)
-        push!(weights, w)
+        push!(distances, w)
     end
-    # weights.*=.999 #soften the weights
     # Inverse distance weighting
-    sum_reciprocal = sum(1 / (1-w) for w in weights)
-    sum_vector_reciprocal = sum(vectors[i] / (1-weights[i]) for i in eachindex(vectors))
+    sum_reciprocal = sum(1 / d for d in distances)
+    sum_vector_reciprocal = sum(vectors[i] / distances[i] for i in eachindex(vectors))
     s_avg = sum_vector_reciprocal / sum_reciprocal
-
-
-    # weighted_sum_s = sum(weights[i] * vectors[i] for i in eachindex(vectors))
-    # total_w = sum(weights) + 0.01
-    # s_avg = weighted_sum_s / total_w
-
+    
     s_avg /= (W/2)
     s_avg *= 20
+    if ~(abs(s_avg)<30)
+        println("s_avg: ",s_avg)
+    end
     return s_avg
 end
 
 function attPointFn(F::attPointField,p::Point)
     #rotation=0:no spiral, 1: ccw full rotation,-1 cw rotation
     #areaFactor: distance away at which weight is halfed
-    p=p-F.c
-    v=rotate(p,F.rotation*π/2)
-    v*=.1
+    v=p-F.c
+    v=rotate(v,F.rotation*π/2)
     weight=2^(-mag(v)^2/(F.areaFactor+.01))
-    return v,weight
+    v*=weight
+    d=distance(p,F.c)/weight
+    return v,d
 end
 
 
@@ -111,13 +114,14 @@ function attLineFn(F::attLineField,p::Point)
     t = clamp(t, 0.0, 1.0)  # Clamp to segment
     closestPoint = F.A + t * AB
 
+    gradient = (p - closestPoint)
     d = distance(p, closestPoint)
     weight=2^(-d/(F.areaFactor+.01))
-
-    gradient = (p - closestPoint)
+    d /= weight
+    gradient *= weight
     gradient=rotate(gradient,F.rotation*π/2)
 
-    return gradient,weight
+    return gradient,d
 end
 
 function lineSeedsFn!(F::attLineField; N=10, L=0.1)
@@ -126,9 +130,9 @@ function lineSeedsFn!(F::attLineField; N=10, L=0.1)
     AB_norm = normalize(AB)
 
     n = Point(-AB_norm.y, AB_norm.x)
-    segment_points = [F.A + t * AB for t in range(0.0, stop=1.0, length=N÷2)]
-    seeds = [point + L * n for point in segment_points]
-    append!(seeds, [point - L * n for point in segment_points])
+    segment_points = [F.A + t * AB for t in range(0.0, stop=1.0, length=N÷2+1)]
+    seeds = [point + L * n for point in segment_points[1:end-1]]
+    append!(seeds, [point - L * n for point in segment_points[2:end]])
     # append!(seeds, [A - L * n, B + L * n])
 
     return seeds
@@ -155,9 +159,28 @@ function dispField(F::attLineField)
     # display the element
     gsave()
     setline(1.5)
-    # darkmode ? sethue("white") : sethue("black")
-    sethue(0,0,.5)
+    darkmode ? sethue("white") : sethue("black")
+    # sethue(0,0,.5)
     line(F.A,F.B,:stroke)
     grestore()
 end
     
+function quiver_plot(computeVector,fields, x_points::Int, y_points::Int)
+    # Generate grid of points
+    x_range, y_range = meshgrid(x_points, y_points,(-W/2,W/2), (-H/2,H/2))
+    u = zeros(y_points, x_points)  # to store x-component of the vector
+    v = zeros(y_points, x_points)  # to store y-component of the vector
+    for i in 1:x_points
+        for j in 1:y_points
+            p = Point(x_range[i], y_range[j])
+            vec = computeVector(p,fields)
+            u[j, i] = vec[1]
+            v[j, i] = vec[2]
+        end
+    end
+    #print shape of u and v to make sure they are the same
+    print(size(u))
+    p = plot(; legend=false, showaxis=false)  # Creates an empty plot without legend and axis
+    quiver!(p, x_range, y_range, quiver=(u, v))
+    
+end
