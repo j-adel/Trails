@@ -67,3 +67,11 @@ end
 function Base.isnan(p::Point)
     return isnan(p.x) || isnan(p.y)
 end
+
+function randF(min,max)
+    return min+rand()*(max-min)
+end
+
+function randF(max)
+    return randF(0,max)
+end

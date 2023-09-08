@@ -1,76 +1,96 @@
 include("fns.jl")
 abstract type Field end
 
+fieldFunction(f::Field) = error("fieldFunction not defined for type $f")
+seedsFunction!(f::Field) = error("seedFunction not defined for type $f")
+
 mutable struct attPointField <: Field
-    fieldFunction::Function
     c::Point
     rotation::Float64
     areaFactor::Float64
+    nSeeds::Int
     seedPoints::Vector{Point}
+    attPointField() = new(undef, undef, undef, undef, undef)
 end
+fieldFunction(::attPointField)=attPointFn
+seedsFunction!(::attPointField)=pointSeedsFn!
 
 mutable struct attLineField <: Field
-    fieldFunction::Function
     A::Point
     B::Point
     rotation::Float64
     areaFactor::Float64
+    nSeeds::Int
     seedPoints::Vector{Point}
 end
+fieldFunction(::attLineField)=attLineFn
+seedsFunction!(::attLineField)=lineSeedsFn!
 
-# function vectorfield(p)
-#     # Initialize the arrays to store s and w values
-#     vectors = Point[]
-#     weights = []
-
-#     s, w = attractorLine(p, Point(0, -W/4), Point(0, W/4), 0.7, 50)
-#     push!(vectors, s)
-#     push!(weights, w)
-
-#     s, w = attractorLine(p, Point(-W/4, 0), Point(W/4, 0), -0.7, 50)
-#     push!(vectors, s)
-#     push!(weights, w)
-
-#     # s, w = attractorPoint(p, Point(0, 0), 0.5, 150)
-#     # push!(vectors, s)
-#     # push!(weights, w)
-
-#     # Compute the weighted average of the s values
-#     weighted_sum_s = sum(weights[i] * vectors[i] for i in eachindex(vectors))
-#     total_w = sum(weights) + 0.01
-#     s_avg = weighted_sum_s / total_w
-
-#     s_avg /= (W/2)
-#     s_avg *= 20
-#     return s_avg
-# end
-
-function initializeFields!(fields)
-    field1=attLineField(attractorLine, Point(0, -W/4), Point(0, W/4), 0.7, 50, Point[])
-    push!(fields, field1)
-    field2=attLineField(attractorLine, Point(-W/4, 0), Point(W/4, 0), -0.7, 50, Point[])
-    push!(fields, field2)
+function initializeFields!(fields::Vector{Field}, nfields=2)
+    for i=1:nfields
+        field=initializeField(attLineField)
+        push!(fields, field)
+    end
+    # field1=attLineField(Point(0, -W/4), Point(0, W/4), 1.5, 50, 10, Point[])
+    # push!(fields, field1)
+    # field2=attLineField(Point(-W/4, 0), Point(W/4, 0), 0.3, 50, 10,Point[])
+    # push!(fields, field2)
+    # field3=attPointField(Point(0, 0), 2, 150, Point[])
+    # push!(fields, field3)
     # push!(fields, attPointField((p)->vectorfield(p), Point(0, 0), 0.5, 150, Point[]))
+end
+
+function initializeField(::Type{T}) where T <: attLineField
+    center = Point(randF(-W/3, W/3), randF(-H/3, H/3))
+    angle = rand() * 2π
+    length = randF(0.1, 0.5) * W
+    
+    A = center + Point(cos(angle), sin(angle)) * length
+    B = center + Point(cos(angle + π), sin(angle + π)) * length
+    rotation = rand(-2:2)
+    areaFactor = randn() * 50
+    nSeeds = 20
+    seedPoints = Point[]
+    
+    return T(A, B, rotation, areaFactor, nSeeds, seedPoints)
+end
+
+
+
+function getSeeds(fields)
+    seeds=Point[]
+    for field in fields
+        append!(seeds,seedsFunction!(field)(field))
+    end
+    return seeds
 end
 
 function computeVector(p,fields)
     vectors = Point[]
     weights = []    
     for field in fields
-        s, w = field.fieldFunction(p, field)
+        fieldF=fieldFunction(field)
+        s, w = fieldF(field, p)
         push!(vectors, s)
         push!(weights, w)
     end
-    weighted_sum_s = sum(weights[i] * vectors[i] for i in eachindex(vectors))
-    total_w = sum(weights) + 0.01
-    s_avg = weighted_sum_s / total_w
+    # weights.*=.999 #soften the weights
+    # Inverse distance weighting
+    sum_reciprocal = sum(1 / (1-w) for w in weights)
+    sum_vector_reciprocal = sum(vectors[i] / (1-weights[i]) for i in eachindex(vectors))
+    s_avg = sum_vector_reciprocal / sum_reciprocal
+
+
+    # weighted_sum_s = sum(weights[i] * vectors[i] for i in eachindex(vectors))
+    # total_w = sum(weights) + 0.01
+    # s_avg = weighted_sum_s / total_w
 
     s_avg /= (W/2)
     s_avg *= 20
     return s_avg
 end
 
-function attractorPoint(p::Point,F::attPointField)
+function attPointFn(F::attPointField,p::Point)
     #rotation=0:no spiral, 1: ccw full rotation,-1 cw rotation
     #areaFactor: distance away at which weight is halfed
     p=p-F.c
@@ -82,7 +102,7 @@ end
 
 
 
-function attractorLine(p::Point, F::attLineField)
+function attLineFn(F::attLineField,p::Point)
     AB = F.B - F.A
     Ap = p - F.A
 
@@ -100,17 +120,13 @@ function attractorLine(p::Point, F::attLineField)
     return gradient,weight
 end
 
-function lineSeeds(A::Point, B::Point, L, N)
+function lineSeedsFn!(F::attLineField; N=10, L=0.1)
     # Compute the direction of AB
-    AB = B - A
+    AB = F.B - F.A
     AB_norm = normalize(AB)
 
     n = Point(-AB_norm.y, AB_norm.x)
-
-    # List of equally spaced points on the segment
-    segment_points = [A + t * AB for t in range(0.0, stop=1.0, length=N÷2)]
-
-    # Compute the offset points for both sides
+    segment_points = [F.A + t * AB for t in range(0.0, stop=1.0, length=N÷2)]
     seeds = [point + L * n for point in segment_points]
     append!(seeds, [point - L * n for point in segment_points])
     # append!(seeds, [A - L * n, B + L * n])
@@ -118,12 +134,30 @@ function lineSeeds(A::Point, B::Point, L, N)
     return seeds
 end
 
-function pointSeeds(c::Point, L, N)
-    # List of equally spaced points in a polygon of radius L and N sides
-    seeds = [Point(c.x+ L * cos(2 * π * i / N), c.y+ L * sin(2 * π * i / N)) for i in 1:N]
-
+function pointSeedsFn!(F::attPointField; N=10, L=0.1)
+    seeds = Point[]
+    for i in 1:N
+        angle = rand() * 2π
+        push!(seeds, F.c + Point(cos(angle), sin(angle)) * L)
+    end
     return seeds
 end
 
+function dispField(F::attPointField)
+    # display the element
+    gsave()
+    darkmode ? sethue("white") : sethue("black")
+    circle(F.c,2,:fill)
+    grestore()
+end
 
+function dispField(F::attLineField)
+    # display the element
+    gsave()
+    setline(1.5)
+    # darkmode ? sethue("white") : sethue("black")
+    sethue(0,0,.5)
+    line(F.A,F.B,:stroke)
+    grestore()
+end
     
