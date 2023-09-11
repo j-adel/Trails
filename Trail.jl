@@ -16,14 +16,14 @@ function followTrail!(p,direction,fieldFunction::Function,fields)
         s=fieldFunction(p,fields)
         p +=s*direction   # Update p1
         push!(points, p)  # Add the current p1 to trail.points
-        # if mag(s)<5/W && length(points)>5
-        #     fp=findFixedPoint(points[end-2],points[end-1],points[end])
-        #     if !isnan(fp)
-        #         push!(points,fp)
-        #         contCond=false
-        #         # println("found fixed point at ",fp," direction ",direction," after ",i," iterations")
-        #     end
-        # end
+        if mag(s)<5/W && length(points)>5
+            fp=findFixedPoint(points[end-2],points[end-1],points[end])
+            if !isnan(fp)
+                push!(points,fp)
+                contCond=false
+                # println("found fixed point at ",fp," direction ",direction," after ",i," iterations")
+            end
+        end
         i+=1
         contCond=contCond && i<maxNPts && (mag(s)>.1/W || length(points)<5)
     end

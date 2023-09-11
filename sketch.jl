@@ -4,7 +4,6 @@ include("fns.jl")
 include("Trail.jl")
 include("Fields.jl")
 
-nfields=2
 W=H=600
 darkmode=false
 trails=[]
@@ -14,7 +13,8 @@ function main()
     @time begin
         # append!(seeds,lineSeedsFn(Point(-W/4, 0), Point(W/4, 0),1,ntrails÷2))
         fields=Field[]
-        initializeFields!(fields,nfields)
+        fieldsAmounts = Dict(attPointField => 0, attLineField => 0, streamLineField =>3)
+        initializeFields!(fields,fieldsAmounts)
         println.(fields)
         seeds=getSeeds(fields)
         trails = [Trail() for _=1:length(seeds)]  # Initialize an  array of `ntrails` Trail objects with empty points arrays
@@ -34,7 +34,7 @@ function main()
         for field in fields
             dispField(field)
         end
-    end W H
+    end W+50 H+50
     # quiver plot using Plots.jl of the vector field
     # grid=range(-W/2,stop=W/2,length=100)
     # quiver_plot(computeVector,fields,20,20)

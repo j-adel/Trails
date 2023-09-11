@@ -24,6 +24,7 @@ function wavg(x0,x1,w=.5)
     return (1-w)*x0+w*x1
 end
 
+
 function step(x,x0=0)
     return x>x0 ? 1 : 0
 end
