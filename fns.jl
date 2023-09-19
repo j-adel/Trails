@@ -85,6 +85,14 @@ function randF(max)
     return randF(0,max)
 end
 
+function randI(min,max)
+    return floor(randF(min,max))
+end
+
+function randI(max)
+    return randI(0,max)
+end
+
 function linspace(start, stop, len)
     return range(start, stop=stop, length=len)
 end
@@ -101,4 +109,29 @@ function meshgrid(x_points::Int, y_points::Int, x_range::Tuple{Float64, Float64}
     y_grid = repeat(y_lin, 1, x_points)
     
     return x_grid, y_grid
+end
+
+function truncate(x)
+    return x>0 ? floor(x) : ceil(x)
+end
+
+function Base.round(x,step)
+    return round(x/step)*step
+end
+
+function parabola(x,root0=0,root1=1)
+    a = 1 / ((0.5 * (root0 + root1) - root0) * (0.5 * (root0 + root1) - root1))
+    return a*(x-root0)*(x-root1)/((root0-root1)^2)
+end
+
+function limit(x,x0,x1)
+    return min(max(x,x0),x1)
+end
+
+function limitMag(x,x0)
+    return limit(x,-x0,x0)
+end
+
+function norm(p::Point)
+    return normalize(p)
 end
