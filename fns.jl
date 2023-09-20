@@ -160,6 +160,54 @@ function modulo(x,y)
     return x-y*floor(x/y)
 end
 
+
 function smoothStep(x)
-    return sign(x)*(3*abs(x)^2-2*abs(x)^3)
+    if x<0
+        return 0
+    elseif x>1
+        return 1
+    else
+        return 3*x^2-2*x^3
+    end
 end
+
+# function scaledEase(x,c=0)
+#     if c>0
+#         return x/(c*(1-x)+1)
+#     else
+#         return 1-(1-x)/(-c*(x)+1)
+#     end
+# end
+
+function scaledEase(x,c=0,x0=0,x1=1,y0=0,y1=1)
+    x = mapto01(x,x0,x1)
+    if c>0
+        return mapfrom01(x/(c*(1-x)+1),y0,y1)
+    else
+        return mapfrom01(1-(1-x)/(-c*(x)+1),y0,y1)
+    end
+    # return mapfrom01(scaledEase(mapto01(x,x0,x1),c),y0,y1)
+end
+
+function scaledStep(x,c=0,x0=0,x1=1,y0=0,y1=1)
+    x = mapto01(x,x0,x1)
+    y =0
+    if x>.5
+        y= scaledEase(x,c,.5,1,.5,1)
+    else
+        y= scaledEase(x,c,.5,0,.5,0)
+    end
+    y = mapfrom01(y,y0,y1)
+    # return mapfrom01(scaledStep(mapto01(x,x0,x1),c),y0,y1)
+end
+
+# function scaledStep(x,c=0)
+#     if x>.5
+#         # return mapfrom01(scaledEase(mapto01(x,.5,1),c),.5,1)
+#         return scaledEase(x,c,.5,1,.5,1)
+#     else
+#         # return mapfrom01(scaledEase(mapto01(x,.5,0),c),.5,0)
+#         return scaledEase(x,c,.5,0,.5,0)
+#     end
+# end
+

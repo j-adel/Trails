@@ -29,7 +29,14 @@ function dipoleStreamFn(F::dipoleStreamField,p::Point)
     # # println("convexity: ",convexity)
     # c=F.P+directionVec/sP(convexity,3)
     # gradient=perpendicular(norm(p-c))/(d+1)*W/2
-    gradient=rotate((p-F.P),-smoothStep(heading(p-F.P)/π)*π)
+    # gradient=rotate((p-F.P),-smoothStep(heading(p-F.P)/π)*π)
+    angle=modulo(heading(p-F.P)+F.direction,2π)-π
+    if angle>0
+        gradient=rotate((p-F.P),-scaledStep(angle,-d/W*5,0,π,0,π))
+    else
+        gradient=rotate((p-F.P),scaledStep(-angle,-d/W*5,0,π,0,π))
+    end
+
     return gradient,d
 end
 

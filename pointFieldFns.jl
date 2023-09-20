@@ -13,7 +13,7 @@ seedsFunction!(::attPointField)=pointSeedsFn!
 
 function initializeField(::Type{T}) where T <: attPointField
     center = Point(randF(-W/2, W/2), randF(-H/2, H/2))
-    rotation = randF(-1, 1)*.9 +rand([0,2])
+    rotation = randF(-1, 1)*.8 +rand([0,2])
     areaFactor = 100 + 0abs(randn() * 50)
     nSeeds = randI(5,12)
     seedPoints = Point[]
@@ -28,7 +28,7 @@ function attPointFn(F::attPointField,p::Point)
     v=rotate(v,F.rotation*π/2)
     weight=2^(-mag(v)^2/(F.areaFactor^2+.01))
     v*=weight
-    d=distance(p,F.c)/weight
+    d=distance(p,F.c)#/weight
     return v,d
 end
 

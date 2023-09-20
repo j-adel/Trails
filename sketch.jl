@@ -13,18 +13,17 @@ trails=[]
 
 function main()
     SEED=rand(1:10000)
-    Random.seed!(SEED)
+    Random.seed!(587)
     @time begin
         cells=Matrix{PointObject}(undef, W÷cellSize+2, H÷cellSize+2)
         fields=Field[]
-        fieldsAmounts = Dict(attLineField => 0,streamLineField => 0, attPointField => 0, dipoleStreamField => 1)
+        fieldsAmounts = Dict(attLineField => 1,streamLineField => 0, attPointField => 0, dipoleStreamField => 0)
         initializeFields!(fields,fieldsAmounts)
         println.(fields)
-        seeds, sourceFields=getSeedsRnd(fields)
+        seeds, sourceFields=getSeeds(fields)
         trails = [Trail(Point[],seeds[i],sourceFields[i]) for i in eachindex(seeds)]  # Initialize an  array of `ntrails` Trail objects with empty points arrays
         for (i, trail) in enumerate(trails)
             p = seeds[i]
-            p=Point(rand(-W/2:W/2),rand(-H/2:H/2))
             followTrailBothWays!(trail, p,computeVector,fields,cells)
             trail.origin = p
         end

@@ -19,7 +19,7 @@ function initializeField(::Type{T}) where T <: attLineField
     
     A = limitMag(center + Point(cos(angle), sin(angle)) * length, Point(W/2, H/2)*.9)
     B = limitMag(center + Point(cos(angle + π), sin(angle + π)) * length, Point(W/2, H/2)*.9)
-    rotation = randF(-1, 1)*.9 +rand([-2,0,2])
+    rotation = randF(-1, 1)*.8 +rand([-2,0,2])
     areaFactor = distance(A,B)/2 + 0abs(randn() * 50)
     nSeeds = 14
     seedPoints = Point[]
@@ -28,18 +28,19 @@ function initializeField(::Type{T}) where T <: attLineField
 end
 
 function attLineFn(F::attLineField,p::Point)
-    AB = F.B - F.A
-    Ap = p - F.A
+    # AB = F.B - F.A
+    # Ap = p - F.A
 
-    # Project p onto AB
-    t = dotproduct(Ap, AB) / dotproduct(AB, AB)
-    t = clamp(t, 0.0, 1.0)  # Clamp to segment
-    closestPoint = F.A + t * AB
+    # # Project p onto AB
+    # t = dotproduct(Ap, AB) / dotproduct(AB, AB)
+    # t = clamp(t, 0.0, 1.0)  # Clamp to segment
+    # closestPoint = F.A + t * AB
 
-    gradient = (p - closestPoint)
-    d = distance(p, closestPoint)
+    # gradient = (p - closestPoint)
+    # d = distance(p, closestPoint)
+    gradient,d = ellipseGrad(p, F.A, F.B)
     weight=2^(-(d^2)/(F.areaFactor^2+.01))
-    d /= weight
+    # d /= weight
     gradient *= weight
     gradient=rotate(gradient,F.rotation*π/2)
 
