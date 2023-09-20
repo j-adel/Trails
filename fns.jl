@@ -8,6 +8,10 @@ function perpendicular(p::Point)
     return Point(-p.y,p.x)
 end
 
+function perp(p::Point)
+    return Point(-p.y,p.x)
+end
+
 function map(x,x0,x1,y0,y1)
     return (x-x0)/(x1-x0)*(y1-y0)+y0
 end
@@ -134,4 +138,28 @@ end
 
 function norm(p::Point)
     return normalize(p)
+end
+
+function cross(p1::Point,p2::Point)
+    return p1.x*p2.y-p1.y*p2.x
+end
+
+function dot(p1::Point,p2::Point)
+    return p1.x*p2.x+p1.y*p2.y
+end
+
+function sP(x,p) #Symmetric Power
+    return abs(x)^p*sign(x)
+end
+
+function heading(p::Point)
+    return atan(p.y,p.x)
+end
+
+function modulo(x,y)
+    return x-y*floor(x/y)
+end
+
+function smoothStep(x)
+    return sign(x)*(3*abs(x)^2-2*abs(x)^3)
 end

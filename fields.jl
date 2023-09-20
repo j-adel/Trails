@@ -1,3 +1,4 @@
+
 include("fns.jl")
 include("fieldFns.jl")
 
@@ -13,7 +14,7 @@ end
 
 
 function getSeeds(fields)
-    seeds=Point[]
+    local seeds=Point[]
     sourceFields=Field[]
     for field in fields
         if field.nSeeds>0
@@ -21,6 +22,18 @@ function getSeeds(fields)
             append!(seeds,newSeeds)
             append!(sourceFields,fill(field,length(newSeeds)))
         end
+    end
+    return seeds, sourceFields
+end
+
+function getSeedsRnd(fields, nSeeds=50)
+    seeds=Point[]
+    sourceFields=Field[]
+    for i=1:nSeeds
+        field=fields[rand(1:end)]
+        newSeed=Point(randF(-W/2,W/2),randF(-H/2,H/2))*.9
+        push!(seeds,newSeed)
+        append!(sourceFields,fill(field,length(newSeed)))
     end
     return seeds, sourceFields
 end
@@ -40,7 +53,7 @@ function computeVector(p,fields)
     
     s_avg /= (W/2)
     s_avg *= 20
-    if ~(abs(s_avg)<30)
+    if (abs(s_avg)>30)
         println("s_avg: ",s_avg)
     end
     s_avg=containRect(p,s_avg,Point(-W/2,-H/2),Point(W/2,H/2))
@@ -66,6 +79,8 @@ function dispField(F::lineField)
     line(F.A,F.B,:stroke)
     grestore()
 end
+#dispField of dipoleField is empty
+dispField(F::dipoleField)=nothing
     
 function quiver_plot(computeVector,fields, x_points::Int, y_points::Int)
     # Generate grid of points

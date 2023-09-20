@@ -18,9 +18,7 @@ function followTrail!(trail,p,direction,fieldFunction::Function,fields,cells)
     maxNPts=2000
     i=0
     contCond=true
-    while p.x>-W/2 && p.x<W/2 && p.y>-H/2 && p.y<H/2 && contCond
-        s=fieldFunction(p,fields)
-        p +=s*direction   # Update p1
+    while contCond
         xIndex=Int(round(p.x/cellSize)+ W÷(2*cellSize))+1; yIndex=Int(round(p.y/cellSize)+ H÷(2*cellSize))+1;
         # println(xIndex," ",yIndex)
         if isassigned(cells,xIndex,yIndex)
@@ -46,7 +44,10 @@ function followTrail!(trail,p,direction,fieldFunction::Function,fields,cells)
         #     end
         # end
         i+=1
+        s=fieldFunction(p,fields)
+        p +=s*direction   # Update p1
         contCond=contCond && i<maxNPts && (mag(s)>.1/W || length(points)<5)
+        contCond=contCond && p.x>-W/2 && p.x<W/2 && p.y>-H/2 && p.y<H/2
     end
     return points
 end
