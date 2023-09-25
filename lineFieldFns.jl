@@ -5,6 +5,7 @@ mutable struct attLineField <: lineField
     A::Point
     B::Point
     rotation::Float64
+    direction::Int8
     areaFactor::Float64
     nSeeds::Int
     seedPoints::Vector{Point}
@@ -19,12 +20,13 @@ function initializeField(::Type{T}) where T <: attLineField
     
     A = limitMag(center + Point(cos(angle), sin(angle)) * length, Point(W/2, H/2)*.9)
     B = limitMag(center + Point(cos(angle + π), sin(angle + π)) * length, Point(W/2, H/2)*.9)
-    rotation = randF(-1, 1)*.8 +rand([-2,0,2])
+    rotation = randF(-1, 1)*.8
+    direction=rand([-1,1])
     areaFactor = distance(A,B)/2 + 0abs(randn() * 50)
     nSeeds = 14
     seedPoints = Point[]
     
-    return T(A, B, rotation, areaFactor, nSeeds, seedPoints)
+    return T(A, B, rotation, direction, areaFactor, nSeeds, seedPoints)
 end
 
 function attLineFn(F::attLineField,p::Point)
@@ -40,8 +42,9 @@ function attLineFn(F::attLineField,p::Point)
     # d = distance(p, closestPoint)
     gradient,d = ellipseGrad(p, F.A, F.B)
     weight=2^(-(d^2)/(F.areaFactor^2+.01))
-    # d /= weight
-    gradient *= weight
+    d /= weight
+    gradient*=(d^distancePower)/d * F.direction
+    # gradient *= weight
     gradient=rotate(gradient,F.rotation*π/2)
 
     return gradient,d
@@ -52,6 +55,7 @@ end
 mutable struct streamLineField <: lineField
     A::Point
     B::Point
+    direction::Int8
     streamFactor::Float64
     areaFactor::Float64
     nSeeds::Int
@@ -67,12 +71,13 @@ function initializeField(::Type{T}) where T <: streamLineField
     
     A = limitMag(center + Point(cos(angle), sin(angle)) * length, Point(W/2, H/2)*.9)
     B = limitMag(center + Point(cos(angle + π), sin(angle + π)) * length, Point(-W/2, H/2)*.9)
+    direction=rand([-1,1])
     streamFactor = rand()
     areaFactor = distance(A,B)/2+ 0abs(randn() * 50)
     nSeeds = 0
     seedPoints = Point[]
     
-    return T(A, B, streamFactor, areaFactor, nSeeds, seedPoints)
+    return T(A, B, direction,streamFactor, areaFactor, nSeeds, seedPoints)
 end
 
 function streamLineFn(F::streamLineField,p::Point)
@@ -90,14 +95,18 @@ end
 
 function lineSeedsFn!(F::lineField)
     # Compute the direction of AB
-    L=0.1
+    L=1
     AB = F.B - F.A
     AB_norm = normalize(AB)
     n = Point(-AB_norm.y, AB_norm.x)
-    segment_points = [F.A + t * AB for t in range(0.0, stop=1, length=F.nSeeds÷2)]
+    segment_points = [F.A + t * AB for t in range(0.01, stop=.99, length=F.nSeeds÷2)]
     seeds = [point + L * n for point in segment_points]
     append!(seeds, [point - L * n for point in segment_points])
-    # append!(seeds, [A - L * n, B + L * n])
+    seedTrails=Trail[]
+    for i in 1:F.nSeeds÷2
+        push!(seedTrails,Trail([segment_points[i]+ L * n , segment_points[i]-L*n],
+        segment_points[i],F))
+    end
 
-    return seeds
+    return seeds, seedTrails
 end

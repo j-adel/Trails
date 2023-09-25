@@ -13,45 +13,74 @@ struct PointObject
     trail::Trail
 end
 
-function followTrail!(trail,p,direction,fieldFunction::Function,fields,cells)
+
+function followTrail(trail,p,direction,fieldFunction::Function,fields,cells)
     points=Point[]
-    maxNPts=2000
+    maxNPts=5000
     i=0
     contCond=true
-    
+    # p=Point(p.x,p.y+.5fieldFunction(p,fields).y)
     while contCond
-        s=fieldFunction(p,fields)
-        p +=s*direction   # Update p1
-        xIndex=Int(round(p.x/cellSize)+ W÷(2*cellSize))+1; yIndex=Int(round(p.y/cellSize)+ H÷(2*cellSize))+1;
-        # println(xIndex," ",yIndex)
-        if isassigned(cells,xIndex,yIndex)
-            if cells[xIndex,yIndex].trail!=trail && cells[xIndex,yIndex].trail.sourceField!=trail.sourceField
-                d=distance(p,cells[xIndex,yIndex].point)
-                if d<.5
-                    p=cells[xIndex,yIndex].point
-                    contCond=false
-                else
-                    p=wavg(p,cells[xIndex,yIndex].point,max(0,.5*parabola(d,0,cellSize)))
+        s=fieldFunction(p,fields)*direction
+        # RK2 integration
+        p +=fieldFunction(p+.5s,fields)*direction   # Update p1
+        #Verlet integration
+        # p=Point(p.x+direction*fieldFunction(p,fields).x,p.y)
+        # p=Point(p.x,p.y+direction*fieldFunction(p,fields).y)
+        xIndex=limit(Int(round(p.x/cellSize)+ W÷(2*cellSize))+1,1,size(cells,1))
+        yIndex=limit(Int(round(p.y/cellSize)+ H÷(2*cellSize))+1,1,size(cells,2))
+        
+        # find nearest neighbors
+        dNearest=Inf
+        pNearest=Point(Inf,Inf)
+        for i=-1:1
+            for j=-1:1
+                xNbr=limit(xIndex+i,1,size(cells,1))
+                yNbr=limit(yIndex+j,1,size(cells,2))
+                if isassigned(cells,xNbr,yNbr)
+                    if cells[xNbr,yNbr].trail!=trail #&& cells[xNbr,yNbr].trail.sourceField!=trail.sourceField
+                        dNearestTemp=distance(p,cells[xNbr,yNbr].point)
+                        if dNearestTemp<dNearest
+                            dNearest=dNearestTemp
+                            pNearest=cells[xNbr,yNbr].point
+                        end
+                    end
                 end
             end
-        else
+        end
+        # merge if close enough
+        if dNearest< mergeDistance
+            if dNearest<.5
+                p=pNearest
+                contCond=false
+                # println("merged after ",i," iterations", " at ",p)
+            else
+                p=wavg(p,pNearest,max(0,.3*parabola(dNearest,0,mergeDistance)))
+            end
+        elseif ~isassigned(cells,xIndex,yIndex)
             cells[xIndex,yIndex]=PointObject(p,trail)
         end
         push!(points, p)  # Add the current p1 to trail.points
-        # if mag(s)<5/W && length(points)>5
-        #     fp=findFixedPoint(points[end-2],points[end-1],points[end])
-        #     if !isnan(fp)
-        #         push!(points,fp)
-        #         contCond=false
-        #         # println("found fixed point at ",fp," direction ",direction," after ",i," iterations")
-        #     end
-        # end
         i+=1
-        contCond=contCond && i<maxNPts && (mag(s)>.1/W || length(points)<5)
-        contCond=contCond && p.x>-W/2 && p.x<W/2 && p.y>-H/2 && p.y<H/2
+        contCond=contCond && (mag(s)>.1/W || mag(s)>mag(fieldFunction(p-s,fields)) || length(points)<5)
+        contCond=contCond && i<maxNPts && p.x>-W/2 && p.x<W/2 && p.y>-H/2 && p.y<H/2
+        # ~contCond && println("stopped after ",i," iterations", " at ",p, " with s ",s)
     end
     return points
 end
+
+
+
+function followTrailBothWays!(trail,fieldFunction::Function,fields,cells)
+    #find the direction of the Trail
+    direction1=sign(dot(fieldFunction(trail.points[2],fields),trail.points[2]-trail.origin))
+    direction2=sign(dot(fieldFunction(trail.points[1],fields),trail.points[1]-trail.origin))
+    points1=followTrail(trail,trail.points[end],direction1,fieldFunction,fields,cells)
+    points2=followTrail(trail,trail.points[1],direction2,fieldFunction,fields,cells)
+    trail.points=append!(reverse(points2),trail.points)
+    append!(trail.points,points1)
+end
+
 
 function findFixedPoint(A::Point,B::Point,C::Point)
     ratio=(C-B)/(B-A)
@@ -60,28 +89,20 @@ function findFixedPoint(A::Point,B::Point,C::Point)
 end
 
 
-
-function followTrailBothWays!(trail,origin,fieldFunction::Function,fields,cells)
-    p=origin #immutable
-    points1=followTrail!(trail,p,1,fieldFunction,fields,cells)
-    points2=followTrail!(trail,p,-1,fieldFunction,fields,cells)
-    append!(trail.points,reverse(points2))
-    push!(trail.points, p)
-    append!(trail.points,points1)
-end
-
-
-
 function disp(trail)
     if length(trail.points)<10
         return
     end
     points=trail.points
     move(points[1])
-    darkmode ? setcolor("white") : setcolor("black")
+    setcolor(displayColor)
     setline(1.5)
     for i=1+1:length(points)
         line(points[i])
+        # gsave()
+        # sethue("red")
+        # circle(points[i],2,:fill)
+        # grestore()
     end
     strokepath()
     
@@ -90,3 +111,9 @@ function disp(trail)
     # circle(trail.origin,2,:fill)
     # grestore()
 end
+
+# function integrate(p::Point,fieldFunction::Function,fields)
+#     p=Point(fieldFunction(p,fields).x,p.y)
+#     p=Point(p.x,fieldFunction(p,fields).y)
+#     return p
+# end
