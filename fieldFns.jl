@@ -5,7 +5,7 @@ include("pointFieldFns.jl")
 include("dipoleFieldFns.jl")
 
 fieldFunction(f::Field) = error("fieldFunction not defined for type $f")
-seedsFunction!(f::Field) = error("seedFunction not defined for type $f")
+seedsFunction(f::Field) = error("seedFunction not defined for type $f")
 
 function containRect(p::Point,v::Point,p1::Point,p2::Point;range=20)
     #shortest distance between p and the rectangle defined by p1 and p2

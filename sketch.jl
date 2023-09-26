@@ -11,13 +11,14 @@ cellSize=4 # integer
 mergeDistance=cellSize
 darkmode=false
 displayColor="black"
+diagnosticMode=false
 trails=[]
 distanceWPower=1.5; distancePower=.5
 function main()
     darkmode ? displayColor="white" : displayColor="black"
     println(displayColor)
     SEED=rand(1:10000)
-    SEED=4078
+    # SEED=2650
     Random.seed!(SEED)
     println("new run with seed: ",SEED)
     @time begin
@@ -26,7 +27,7 @@ function main()
         fieldsAmounts = Dict(attLineField => 2,streamLineField => 0, attPointField => 0, dipoleStreamField => 0)
         initializeFields!(fields,fieldsAmounts)
         println.(fields)
-        _, _,trails=getSeeds(fields)
+        trails=getSeeds(fields,computeVector)
         for (i, trail) in enumerate(trails)
             # p = seeds[i]
             followTrailBothWays!(trail,computeVector,fields,cells)
@@ -43,11 +44,13 @@ function main()
         # for field in fields
         #     dispField(field)
         # end
-        # #display seeds
-        # sethue("red")
-        # for trail in trails
-        #     circle(trail.origin, 2, :fill)
-        # end
+
+        if diagnosticMode #display seeds
+            sethue("red")
+            for trail in trails
+                circle(trail.origin, 2, :fill)
+            end
+        end
         #display border
         sethue(displayColor)
         setline(2)

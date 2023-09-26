@@ -10,7 +10,7 @@ mutable struct attPointField <: pointField
     seedPoints::Vector{Point}
 end
 fieldFunction(::attPointField)=attPointFn
-seedsFunction!(::attPointField)=pointSeedsFn!
+seedsFunction(::attPointField)=pointSeedsFn!
 
 function initializeField(::Type{T}) where T <: attPointField
     center = Point(randF(-W/2, W/2), randF(-H/2, H/2))

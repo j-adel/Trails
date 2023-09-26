@@ -160,6 +160,10 @@ function modulo(x,y)
     return x-y*floor(x/y)
 end
 
+function Base.round(x::Point; digits::Integer=0)
+    return Point(round(x.x; digits=digits), round(x.y; digits=digits))
+end
+
 
 function smoothStep(x)
     if x<0

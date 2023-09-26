@@ -13,19 +13,19 @@ end
 
 
 
-function getSeeds(fields)
+function getSeeds(fields,fieldFunction::Function)
     local seeds = Point[]
     seedTrails = Trail[]
     sourceFields = Field[]
     for field in fields
         if field.nSeeds > 0
-            newSeeds,newSeedTrails = seedsFunction!(field)(field)
-            append!(seeds, newSeeds)
-            append!(sourceFields, fill(field, length(newSeeds)))
+            newSeedTrails = seedsFunction(field)(field,fieldFunction,fields)
+            # append!(seeds, newSeeds)
+            # append!(sourceFields, fill(field, length(newSeeds)))
             append!(seedTrails, newSeedTrails)
         end
     end
-    return seeds, sourceFields, seedTrails
+    return seedTrails
 end
 
 function getSeedsRnd(fields, nSeeds=50)
@@ -58,30 +58,10 @@ function computeVector(p, fields)
         println("s_avg: ", s_avg)
     end
     s_avg = containRect(p, s_avg, Point(-W / 2, -H / 2), Point(W / 2, H / 2))
+    # mag(s_avg) > 10 && println("s_avg: ", s_avg)
     return s_avg
 end
 
-function dispField(F::attPointField)
-    if F.nSeeds == 0
-        return
-    end
-    gsave()
-    sethue(displayColor)
-    circle(F.c, 2, :fill)
-    grestore()
-end
-
-function dispField(F::lineField)
-    # display the element
-    gsave()
-    setline(1.5)
-    sethue(displayColor)
-    # sethue(0,0,.5)
-    line(F.A, F.B, :stroke)
-    grestore()
-end
-#dispField of dipoleField is empty
-dispField(F::dipoleField) = nothing
 
 function quiver_plot(computeVector, fields, x_points::Int, y_points::Int)
     # Generate grid of points

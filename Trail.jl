@@ -18,12 +18,13 @@ function followTrail(trail,p,direction,fieldFunction::Function,fields,cells)
     points=Point[]
     maxNPts=5000
     i=0
+    mergePulls=0
     contCond=true
     # p=Point(p.x,p.y+.5fieldFunction(p,fields).y)
     while contCond
-        s=fieldFunction(p,fields)*direction
         # RK2 integration
-        p +=fieldFunction(p+.5s,fields)*direction   # Update p1
+        s=fieldFunction(p+.5*direction*fieldFunction(p,fields),fields)*direction
+        p += s  # Update p1
         #Verlet integration
         # p=Point(p.x+direction*fieldFunction(p,fields).x,p.y)
         # p=Point(p.x,p.y+direction*fieldFunction(p,fields).y)
@@ -32,13 +33,13 @@ function followTrail(trail,p,direction,fieldFunction::Function,fields,cells)
         
         # find nearest neighbors
         dNearest=Inf
-        pNearest=Point(Inf,Inf)
+        pNearest=Point(Inf,-Inf)
         for i=-1:1
             for j=-1:1
                 xNbr=limit(xIndex+i,1,size(cells,1))
                 yNbr=limit(yIndex+j,1,size(cells,2))
                 if isassigned(cells,xNbr,yNbr)
-                    if cells[xNbr,yNbr].trail!=trail #&& cells[xNbr,yNbr].trail.sourceField!=trail.sourceField
+                    if cells[xNbr,yNbr].trail!=trail && cells[xNbr,yNbr].trail.sourceField!=trail.sourceField
                         dNearestTemp=distance(p,cells[xNbr,yNbr].point)
                         if dNearestTemp<dNearest
                             dNearest=dNearestTemp
@@ -51,18 +52,24 @@ function followTrail(trail,p,direction,fieldFunction::Function,fields,cells)
         # merge if close enough
         if dNearest< mergeDistance
             if dNearest<.5
+                println("merged ", p, " with ",pNearest)
                 p=pNearest
                 contCond=false
                 # println("merged after ",i," iterations", " at ",p)
             else
-                p=wavg(p,pNearest,max(0,.3*parabola(dNearest,0,mergeDistance)))
+                scaledAttractionCoeff=(.3+mergePulls/500)
+                p=wavg(p,pNearest,max(0,scaledAttractionCoeff*parabola(dNearest,0,mergeDistance)))
+                # println("moved ",p," closer to ",pNearest, "by", max(0,.3*parabola(dNearest,0,mergeDistance)))
+                mergePulls+=1
             end
         elseif ~isassigned(cells,xIndex,yIndex)
             cells[xIndex,yIndex]=PointObject(p,trail)
         end
+
+        # mergePulls>1 && println("Merge pulls: ",mergePulls)
         push!(points, p)  # Add the current p1 to trail.points
         i+=1
-        contCond=contCond && (mag(s)>.1/W || mag(s)>mag(fieldFunction(p-s,fields)) || length(points)<5)
+        contCond=contCond && (mag(s)>.01 || mag(s)>=mag(fieldFunction(p-s,fields)) || length(points)<25)
         contCond=contCond && i<maxNPts && p.x>-W/2 && p.x<W/2 && p.y>-H/2 && p.y<H/2
         # ~contCond && println("stopped after ",i," iterations", " at ",p, " with s ",s)
     end
@@ -73,12 +80,16 @@ end
 
 function followTrailBothWays!(trail,fieldFunction::Function,fields,cells)
     #find the direction of the Trail
-    direction1=sign(dot(fieldFunction(trail.points[2],fields),trail.points[2]-trail.origin))
-    direction2=sign(dot(fieldFunction(trail.points[1],fields),trail.points[1]-trail.origin))
-    points1=followTrail(trail,trail.points[end],direction1,fieldFunction,fields,cells)
-    points2=followTrail(trail,trail.points[1],direction2,fieldFunction,fields,cells)
-    trail.points=append!(reverse(points2),trail.points)
-    append!(trail.points,points1)
+    lookout=0
+    # println("points",trail.points[1],trail.points[2],wavg(trail.points[1],trail.points[2],1+lookout))
+    direction1=sign(dot(fieldFunction(wavg(trail.points[1],trail.points[2],0-lookout),fields),trail.points[1]-trail.origin))
+    direction2=sign(dot(fieldFunction(wavg(trail.points[1],trail.points[2],1+lookout),fields),trail.points[2]-trail.origin))
+    # println("directions ",direction1,direction2)
+    # direction1=1;direction2=1;
+    points1=followTrail(trail,trail.points[1],direction1,fieldFunction,fields,cells)
+    points2=followTrail(trail,trail.points[end],direction2,fieldFunction,fields,cells)
+    trail.points=append!(reverse(points1),[trail.points[1],trail.points[2]])
+    append!(trail.points,points2)
 end
 
 
@@ -92,19 +103,21 @@ end
 function disp(trail)
     if length(trail.points)<10
         return
-    end
+    end ######### CHANGE THIS TO DISTANCE
     points=trail.points
-    move(points[1])
     setcolor(displayColor)
     setline(1.5)
-    for i=1+1:length(points)
-        line(points[i])
-        # gsave()
-        # sethue("red")
-        # circle(points[i],2,:fill)
-        # grestore()
-    end
-    strokepath()
+    bezpath=makebezierpath(points)
+    drawbezierpath(bezpath,:stroke,close=false)
+    # move(points[1])
+    # for i=1+1:length(points)
+    #     line(points[i])
+    #     # gsave()
+    #     # sethue("red")
+    #     # circle(points[i],2,:fill)
+    #     # grestore()
+    # end
+    # strokepath()
     
     # gsave()
     # sethue("red")

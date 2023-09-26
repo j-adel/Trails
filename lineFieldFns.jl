@@ -11,7 +11,7 @@ mutable struct attLineField <: lineField
     seedPoints::Vector{Point}
 end
 fieldFunction(::attLineField)=attLineFn
-seedsFunction!(::attLineField)=lineSeedsFn!
+seedsFunction(::attLineField)=lineSeedsFn
 
 function initializeField(::Type{T}) where T <: attLineField
     center = Point(randF(-W/3, W/3), randF(-H/3, H/3))
@@ -62,7 +62,7 @@ mutable struct streamLineField <: lineField
     seedPoints::Vector{Point}
 end
 fieldFunction(::streamLineField)=streamLineFn
-seedsFunction!(::streamLineField)=lineSeedsFn!
+seedsFunction(::streamLineField)=lineSeedsFn
 
 function initializeField(::Type{T}) where T <: streamLineField
     center = Point(randF(-W/3, W/3), randF(-H/3, H/3))
@@ -93,20 +93,23 @@ function streamLineFn(F::streamLineField,p::Point)
     return gradient,d
 end
 
-function lineSeedsFn!(F::lineField)
+function lineSeedsFn(F::lineField,fieldFunction::Function,fields::Vector{Field})
     # Compute the direction of AB
-    L=1
+    L=3
     AB = F.B - F.A
     AB_norm = normalize(AB)
     n = Point(-AB_norm.y, AB_norm.x)
     segment_points = [F.A + t * AB for t in range(0.01, stop=.99, length=F.nSeeds÷2)]
-    seeds = [point + L * n for point in segment_points]
-    append!(seeds, [point - L * n for point in segment_points])
+    # seeds = [point + L * n for point in segment_points]
+    # append!(seeds, [point - L * n for point in segment_points])
     seedTrails=Trail[]
-    for i in 1:F.nSeeds÷2
-        push!(seedTrails,Trail([segment_points[i]+ L * n , segment_points[i]-L*n],
-        segment_points[i],F))
+    for segmentPoint in segment_points
+        fieldVec1=norm(fieldFunction(segmentPoint+L*n,fields))
+        dot(fieldVec1,n)>0 && (fieldVec1*=-1)
+        fieldVec2=norm(fieldFunction(segmentPoint-L*n,fields))
+        dot(fieldVec2,-n)>0 && (fieldVec2*=-1)
+        push!(seedTrails,Trail([segmentPoint+ L * fieldVec1 , segmentPoint+L*fieldVec2],segmentPoint,F))
     end
 
-    return seeds, seedTrails
+    return seedTrails
 end

@@ -9,7 +9,7 @@ mutable struct dipoleStreamField <: dipoleField
     seedPoints::Vector{Point}
 end
 fieldFunction(::dipoleStreamField)=dipoleStreamFn
-seedsFunction!(::dipoleStreamField)=error("dipoleStreamField does not have seeds")
+seedsFunction(::dipoleStreamField)=error("dipoleStreamField does not have seeds")
 
 function initializeField(::Type{T}) where T <: dipoleStreamField
     P=Point(randF(-W/2, W/2), randF(-H/2, H/2))*.8
