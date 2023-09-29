@@ -215,3 +215,14 @@ end
 #     end
 # end
 
+function limitL(p::Point,min,max)
+    L=mag(p)
+    L==0 && return p
+    if L>max
+        return p*max/L
+    elseif L<min
+        return p*min/L
+    else
+        return p
+    end
+end

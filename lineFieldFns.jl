@@ -113,3 +113,13 @@ function lineSeedsFn(F::lineField,fieldFunction::Function,fields::Vector{Field})
 
     return seedTrails
 end
+
+function dispField(F::lineField)
+    # display the element
+    gsave()
+    setline(1.5)
+    darkmode ? sethue("white") : sethue("black")
+    # sethue(0,0,.5)
+    line(F.A, F.B, :stroke)
+    grestore()
+end

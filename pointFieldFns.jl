@@ -29,8 +29,8 @@ function attPointFn(F::attPointField,p::Point)
     v=p-F.c
     v=rotate(v,F.rotation*π/2)*((d^distancePower)/d)*F.direction
     weight=2^(-mag(v)^2/(F.areaFactor^2+.01))
-    v*=weight
-    d=distance(p,F.c)#/weight
+    # v*=weight
+    d=distance(p,F.c)/weight
     return v,d
 end
 
@@ -42,3 +42,14 @@ function pointSeedsFn!(F::attPointField; )
     end
     return seeds
 end
+
+function dispField(F::attPointField)
+    if F.nSeeds == 0
+        return
+    end
+    gsave()
+    darkmode ? sethue("white") : sethue("black")
+    circle(F.c, 2, :fill)
+    grestore()
+end
+
