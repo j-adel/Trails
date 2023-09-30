@@ -10,7 +10,7 @@ mutable struct attPointField <: pointField
     seedPoints::Vector{Point}
 end
 fieldFunction(::attPointField)=attPointFn
-seedsFunction(::attPointField)=pointSeedsFn!
+seedsFunction(::attPointField)=pointSeedsFn
 
 function initializeField(::Type{T}) where T <: attPointField
     center = Point(randF(-W/2, W/2), randF(-H/2, H/2))
@@ -27,6 +27,7 @@ function attPointFn(F::attPointField,p::Point)
     #rotation=0:no spiral, 1: ccw full rotation,-1 cw rotation
     #areaFactor: distance away at which weight is halfed
     v=p-F.c
+    d=distance(p,F.c)
     v=rotate(v,F.rotation*π/2)*((d^distancePower)/d)*F.direction
     weight=2^(-mag(v)^2/(F.areaFactor^2+.01))
     # v*=weight
@@ -34,13 +35,16 @@ function attPointFn(F::attPointField,p::Point)
     return v,d
 end
 
-function pointSeedsFn!(F::attPointField; )
-    seeds = Point[]
+function pointSeedsFn(F::attPointField,fieldFunction::Function,fields::Vector{Field})
+    L = 1 # You can adjust the length L to your needs
+    seedTrails = Trail[]
     for i in 1:F.nSeeds
-        angle = map(i, 0, F.nSeeds, 0, 2π)
-        push!(seeds, F.c + Point(cos(angle), sin(angle)) * 1)
+        angle = map(i, 1, F.nSeeds, 0, 2π)
+        point1 = F.c + Point(cos(angle), sin(angle)) * L
+        point2 = F.c + Point(cos(angle + π), sin(angle + π)) * L # point at the opposite end of the circle
+        push!(seedTrails, Trail([point1, point2], F.c, F))
     end
-    return seeds
+    return seedTrails
 end
 
 function dispField(F::attPointField)

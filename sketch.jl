@@ -25,10 +25,11 @@ function main()
     @time begin
         cells = [PointObject[] for _ in 1:(W ÷ cellSize + 2), _ in 1:(H ÷ cellSize + 2)]
         fields=Field[]
-        fieldsAmounts = Dict(attLineField =>3,streamLineField => 0, attPointField => 0, dipoleStreamField => 0)
+        fieldsAmounts = Dict(attLineField =>1,streamLineField => 0, attPointField => 0, dipoleStreamField => 0)
         initializeFields!(fields,fieldsAmounts)
         println.(fields)
         trails=getSeeds(fields,computeVector)
+        # trails=getSeedsRnd(fields,50)
         for (i, trail) in enumerate(trails)
             # p = seeds[i]
             followTrailBothWays!(trail,computeVector,fields,cells)
